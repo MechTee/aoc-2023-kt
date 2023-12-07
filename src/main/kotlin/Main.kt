@@ -1,54 +1,59 @@
 import java.io.File
-import java.math.BigInteger
-
-
-operator fun BigInteger.rangeTo(other: BigInteger) =
-    BigIntegerRange(this, other)
-
-class BigIntegerRange(
-    override val start: BigInteger,
-    override val endInclusive: BigInteger
-) : ClosedRange<BigInteger>, Iterable<BigInteger> {
-    override operator fun iterator(): Iterator<BigInteger> =
-        BigIntegerRangeIterator(this)
-}
-
-class BigIntegerRangeIterator(
-    private val range: ClosedRange<BigInteger>
-) : Iterator<BigInteger> {
-    private var current = range.start
-
-    override fun hasNext(): Boolean =
-        current <= range.endInclusive
-
-    override fun next(): BigInteger {
-        if (!hasNext()) {
-            throw NoSuchElementException()
-        }
-        return current++
-    }
-}
 
 fun main() {
     val file = File("src/main/resources/input.txt")
     val input = file.readLines()
-    val times = input.first().substringAfter("Time:").split(" ").filterNot { it.isBlank() }.map { it.toInt() }
-    val distances = input.last().substringAfter("Distance:").split(" ").filterNot { it.isBlank() }.map { it.toInt() }
-    val races = times zip distances
-    val solvePart1 = solvePart1(races)
-    println("Part 1: $solvePart1")
+    val result = input.map { it.split(" ").map {it.trim()}}
+    val pairs = result.map { it[0]to it[1].toLong() }
+    val solvePart1 = sortPairsPt1(pairs).mapIndexed { index, pair ->  pair.second * (index + 1) }.sum()
+    println("solve Part 1: $solvePart1")
+    val solvePart2 = sortPairsPt2(pairs).mapIndexed { index, pair ->  pair.second * (index + 1) }.sum()
+    println("solve Part 2: $solvePart2")
 
-    val singleRaceTime = times.map { it.toString() }.fold("") { acc, s -> "$acc$s" }.trim().toBigInteger()
-    val singleRaceDistance = distances.map { it.toString() }.fold("") { acc, s -> "$acc$s" }.trim().toBigInteger()
-
-    val solvePart2 = solvePart2(singleRaceTime, singleRaceDistance)
-    println("Part 2: $solvePart2")
 }
 
-fun solvePart1(input: List<Pair<Int, Int>>): Int = input.map { pair ->
-    (1..pair.first).map { (pair.first - it) * it }.count{ it >= pair.second}}
-    .fold(1) { acc, i -> acc * i }
+fun getCardValuePt1(char: Char) = "23456789TJQKA".indexOf(char)
 
+fun getCardValuePt2(char: Char) = "J23456789TQKA".indexOf(char)
 
-fun solvePart2(time: BigInteger, distance: BigInteger): Int =
-    (BigInteger.ONE..time).map { (time - it) * it }.count { it >= distance }
+fun sortPairsPt1(input: List<Pair<String, Long>>) =
+    input.sortedWith (compareBy({getHandValuePt1(it.first)}, {getCardValuePt1(it.first[0])},
+        {getCardValuePt1(it.first[1])}, {getCardValuePt1(it.first[2])}, {getCardValuePt1(it.first[3])},
+        {getCardValuePt1(it.first[4])}) )
+
+fun sortPairsPt2(input: List<Pair<String, Long>>) =
+    input.sortedWith (compareBy({getHandValuePt2(it.first)}, {getCardValuePt2(it.first[0])},
+        {getCardValuePt2(it.first[1])}, {getCardValuePt2(it.first[2])}, {getCardValuePt2(it.first[3])},
+        {getCardValuePt2(it.first[4])}) )
+
+fun getHandValuePt1(input: String): Int {
+    val cardCounts = input.groupingBy { it }.eachCount()
+    val max = cardCounts.values.max()
+    return when {
+        max == 5 -> 7
+        max == 4 -> 6
+        max == 3 && cardCounts.values.contains(2) -> 5
+        max == 3 -> 4
+        max == 2 && cardCounts.values.count { it == 2 } == 2 -> 3
+        max == 2 -> 2
+        max == 1 -> 1
+        else -> error("Missing case in when")
+    }
+}
+
+fun getHandValuePt2(input: String): Int {
+    var cards = input
+    if (cards.contains('J')) {
+        cards = if (cards == "JJJJJ") {
+            "AAAAA"
+        } else {
+            val cardCounts = cards.replace("J", "").groupingBy { it }.eachCount()
+            val cardOrder = listOf('J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A').mapIndexed { index, c -> c to index + 1 }.toMap()
+            val replaceChar =
+                cardCounts.entries.filter { it.value == cardCounts.values.max() }
+                    .sortedByDescending { cardOrder[it.key] }.first().key
+            cards.replace('J', replaceChar)
+        }
+    }
+    return getHandValuePt1(cards)
+}
