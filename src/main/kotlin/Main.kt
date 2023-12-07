@@ -1,39 +1,45 @@
 import java.io.File
 
 fun main() {
+    val allowed = Triple<Int, Int, Int>(12, 13, 14)
     val file = File("src/main/resources/input.txt")
-    val numbers = arrayOf(Pair("one", 1), Pair("two", 2), Pair("three", 3), Pair("four", 4), Pair("five", 5), Pair
-        ("six", 6),Pair("seven", 7), Pair("eight", 8), Pair("nine", 9))
-    val res = file.readLines().sumOf { combineFirstAndLastDigit(it, numbers) }
-    println("result is: $res")
+    val games = file.readLines().fold(HashMap<Int, List<Triple<Int,Int,Int>>>()) { acc, str ->
+        acc[str.split(": ")[0].substringAfter(" ").trim().toInt()] =
+            str.substringAfter(": ").split(";").map {
+               mapInputsToTriple(it)
+            }
+        acc
+    }
+    val result = games.filter { isGamePossible(it.value, allowed) }.keys.sum()
+    println("solvePart1: $result")
+    val result2 = games.map { game ->
+        val maxR = game.value.maxOf { it.first }
+        val maxG = game.value.maxOf { it.second }
+        val maxB = game.value.maxOf { it.third }
+        maxR * maxG * maxB
+    }.sum()
+
+    println("solvePart2: $result2")
 }
 
-
-fun combineFirstAndLastDigit(input: String, numbers: Array<Pair<String, Int>>): Int {
-    val firstDigit = getFirstDigit(input, numbers)
-    val lastDigit = getLastDigit(input, numbers)
-    val asString = (firstDigit.toString() + lastDigit.toString())
-    println("result of line $input with $firstDigit and $lastDigit is: $asString")
-    return asString.toInt()
+fun mapInputsToTriple(input: String): Triple<Int, Int, Int> {
+    val x = input.trim().split(",")
+    var r = 0
+    var g = 0
+    var b = 0
+    for (v in x) {
+        if (v.contains("red")) {
+            r = v.trim().split(" ")[0].trim().toInt()
+        }
+        if (v.contains("green")) {
+            g = v.trim().split(" ")[0].trim().toInt()
+        }
+        if (v.contains("blue")) {
+            b = v.trim().split(" ")[0].trim().toInt()
+        }
+    }
+    return Triple(r, g, b)
 }
 
-fun getFirstDigit(input: String, numbers: Array<Pair<String, Int>>): Int {
-    val digit = input.first { it.isDigit() }
-    val indexOfDigit = input.indexOfFirst { it.isDigit() }
-    val indicesOfNumbers = numbers.map { input.indexOf(it.first) }
-    val minimumIndex = indicesOfNumbers.filter { it < indexOfDigit && it != -1 }.minOrNull() ?: return digit
-        .digitToInt()
-    return numbers[indicesOfNumbers.mapIndexed() { index, i -> Pair(index, i) }
-        .first() { it.second == minimumIndex }
-        .first].second
-}
-
-fun getLastDigit(input: String, numbers: Array<Pair<String, Int>>): Int {
-    val digit = input.last { it.isDigit() }
-    val indexOfDigit = input.indexOfLast { it.isDigit() }
-    val indicesOfNumbers = numbers.map { input.lastIndexOf (it.first) }
-    val minimumIndex = indicesOfNumbers.filter { it > indexOfDigit && it != -1 }.maxOrNull() ?: return digit.digitToInt()
-    return numbers[indicesOfNumbers.mapIndexed() { index, i -> Pair(index, i) }
-        .first() { it.second == minimumIndex }
-        .first].second
-}
+fun isGamePossible(set: List<Triple<Int, Int, Int>>, allowed: Triple<Int, Int, Int>) =
+    set.all { it.first <= allowed.first && it.second <= allowed.second && it.third <= allowed.third }
